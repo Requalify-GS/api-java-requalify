@@ -1,6 +1,7 @@
 package com.gs.requalify.controller;
 
 import com.gs.requalify.dto.UserDTO;
+import com.gs.requalify.dto.UserUpdateDTO;
 import com.gs.requalify.model.Credentials;
 import com.gs.requalify.model.Token;
 import com.gs.requalify.model.User;
@@ -18,11 +19,9 @@ import org.slf4j.LoggerFactory;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Map;
 
@@ -78,21 +77,61 @@ public class UserController {
     }
 
     @PostMapping("/login")
-    @Operation(summary = "Login do usuário", description = "Autentica usuário e retorna token JWT com informações do usuário e do pátio")
+    @Operation(summary = "Login do usuário", description = "Autentica usuário e retorna token JWT com informações do usuário")
     @ApiResponse(responseCode = "200", description = "Login realizado com sucesso")
     @ApiResponse(responseCode = "401", description = "Credenciais incorretas")
     @ApiResponse(responseCode = "404", description = "Usuário não encontrado")
-    public Token login(@RequestBody @Valid Credentials credentials){
+    public ResponseEntity<Object> login(@RequestBody @Valid Credentials credentials){
         try {
             User user = (User) authService.loadUserByUsername(credentials.username());
             if (!passwordEncoder.matches(credentials.password(), user.getPassword())){
-                throw new BadCredentialsException("Senha incorreta");
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(Map.of("error", "Credenciais incorretas"));
             }
-            return tokenService.createToken(user);
+            Token token = tokenService.createToken(user);
+            return ResponseEntity.ok(token);
         } catch (UsernameNotFoundException ex) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário não encontrado");
-        } catch (BadCredentialsException ex) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Credenciais incorretas");
+            log.error("Usuário não encontrado: {}", credentials.username());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("error", "Usuário não encontrado"));
+        } catch (Exception ex) {
+            log.error("Erro no login: {}", ex.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Erro ao realizar login"));
+        }
+    }
+
+    @PutMapping("/{id}")
+    @Operation(summary = "Atualizar usuário", description = "Atualiza os dados de um usuário existente")
+    @ApiResponse(responseCode = "200", description = "Usuário atualizado com sucesso")
+    @ApiResponse(responseCode = "404", description = "Usuário não encontrado")
+    @ApiResponse(responseCode = "400", description = "Dados inválidos")
+    @SecurityRequirement(name = "bearerAuth")
+    public ResponseEntity<Object> updateUser(
+            @Parameter(description = "ID do usuário") @PathVariable Long id,
+            @RequestBody @Valid UserUpdateDTO userUpdateDTO) {
+        try {
+            UserDTO updatedUser = userService.updateUser(id, userUpdateDTO);
+            return ResponseEntity.ok(updatedUser);
+        } catch (RuntimeException e) {
+            log.error(e.getMessage());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @DeleteMapping("/{id}")
+    @Operation(summary = "Deletar usuário", description = "Deleta um usuário existente", security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponse(responseCode = "204", description = "Usuário deletado com sucesso")
+    @ApiResponse(responseCode = "404", description = "Usuário não encontrado")
+    public ResponseEntity<Object> deleteUser(@Parameter(description = "ID do usuário") @PathVariable Long id) {
+        try {
+            userService.deleteUser(id);
+            return ResponseEntity.noContent().build();
+        } catch (RuntimeException e) {
+            log.error(e.getMessage());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("error", e.getMessage()));
         }
     }
 }
