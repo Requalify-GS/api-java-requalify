@@ -94,9 +94,15 @@ public class ResumeService {
 
     @Transactional
     public void deleteResume(Long id) {
-        if (!resumeRepository.existsById(id)) {
-            throw new RuntimeException("Currículo não encontrado");
+        Resume resume = resumeRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Currículo não encontrado"));
+
+        User user = resume.getUser();
+        if (user != null) {
+            user.setResume(null);
+            userRepository.save(user);
         }
-        resumeRepository.deleteById(id);
+
+        resumeRepository.delete(resume);
     }
 }
