@@ -1,5 +1,6 @@
 package com.gs.requalify.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 import jakarta.persistence.*;
@@ -45,6 +46,7 @@ public class User implements UserDetails {
 
     @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     @Schema(description = "Currículo do usuário")
+    @JsonIgnore
     private Resume resume;
 
     @Override

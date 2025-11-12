@@ -1,5 +1,6 @@
 package com.gs.requalify.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -22,6 +23,7 @@ public class Education {
     @ManyToOne
     @JoinColumn(name = "resume_id", nullable = false)
     @Schema(description = "Currículo associado")
+    @JsonIgnore
     private Resume resume;
 
     @NotBlank(message = "A instituição de ensino não pode ser nula")

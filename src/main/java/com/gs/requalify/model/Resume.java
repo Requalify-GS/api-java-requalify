@@ -1,5 +1,6 @@
 package com.gs.requalify.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
@@ -29,6 +30,7 @@ public class Resume {
     @JoinColumn(name = "user_id", nullable = false, unique = true)
     @NotNull(message = "O usuário não pode ser nulo")
     @Schema(description = "Usuário dono do currículo")
+    @JsonIgnore
     private User user;
 
     @NotBlank(message = "A profissão do usuário não pode ser nula")
