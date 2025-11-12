@@ -43,6 +43,10 @@ public class User implements UserDetails {
     @Schema(description = "Nome completo do usuário", example = "Guilherme Alves")
     private String name;
 
+    @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Schema(description = "Currículo do usuário")
+    private Resume resume;
+
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return List.of();
