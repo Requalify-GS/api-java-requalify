@@ -3,6 +3,8 @@ package com.gs.requalify.service;
 import com.gs.requalify.dto.RoadmapDTO;
 import com.gs.requalify.model.*;
 import com.gs.requalify.repository.*;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,6 +24,7 @@ public class RoadmapService {
     }
 
     @Transactional
+    @CacheEvict(value = "roadmaps", allEntries = true)
     public Roadmap createRoadmap(RoadmapDTO roadmapDTO, Long userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("Usuário não encontrado"));
@@ -65,16 +68,19 @@ public class RoadmapService {
         return roadmapRepository.save(roadmap);
     }
 
+    @Cacheable(value = "roadmaps", key = "#id")
     public Roadmap getRoadmapById(Long id) {
         return roadmapRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Roadmap não encontrado"));
     }
 
+    @Cacheable(value = "roadmaps", key = "'user-' + #userId")
     public List<Roadmap> getRoadmapsByUserId(Long userId) {
         return roadmapRepository.findByUserId(userId);
     }
 
     @Transactional
+    @CacheEvict(value = "roadmaps", allEntries = true)
     public void deleteRoadmap(Long id) {
         if (!roadmapRepository.existsById(id)) {
             throw new RuntimeException("Roadmap não encontrado");

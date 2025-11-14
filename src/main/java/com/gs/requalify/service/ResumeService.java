@@ -3,6 +3,8 @@ package com.gs.requalify.service;
 import com.gs.requalify.dto.ResumeDTO;
 import com.gs.requalify.model.*;
 import com.gs.requalify.repository.*;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,6 +21,7 @@ public class ResumeService {
     }
 
     @Transactional
+    @CacheEvict(value = "resumes", allEntries = true)
     public Resume createResume(ResumeDTO resumeDTO, Long userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("Usuário não encontrado"));
@@ -42,18 +45,20 @@ public class ResumeService {
         return resumeRepository.save(resume);
     }
 
-
+    @Cacheable(value = "resumes", key = "#id")
     public Resume getResumeById(Long id) {
         return resumeRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Currículo não encontrado"));
     }
 
+    @Cacheable(value = "resumes", key = "'user-' + #userId")
     public Resume getResumeByUserId(Long userId) {
         return resumeRepository.findByUserId(userId)
                 .orElseThrow(() -> new RuntimeException("Currículo não encontrado para este usuário"));
     }
 
     @Transactional
+    @CacheEvict(value = "resumes", allEntries = true)
     public Resume updateResume(Long id, ResumeDTO resumeDTO) {
         Resume resumeExistente = resumeRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Currículo não encontrado"));
@@ -93,6 +98,7 @@ public class ResumeService {
     }
 
     @Transactional
+    @CacheEvict(value = "resumes", allEntries = true)
     public void deleteResume(Long id) {
         Resume resume = resumeRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Currículo não encontrado"));
