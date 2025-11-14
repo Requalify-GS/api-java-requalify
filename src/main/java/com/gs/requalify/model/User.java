@@ -49,6 +49,11 @@ public class User implements UserDetails {
     @JsonIgnore
     private Resume resume;
 
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Schema(description = "Roadmaps do usuário")
+    @JsonIgnore
+    private List<Roadmap> roadmaps;
+
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return List.of();

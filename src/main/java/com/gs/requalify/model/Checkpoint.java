@@ -47,9 +47,9 @@ public class Checkpoint {
 
     @NotNull(message = "A ordem não pode ser nula")
     @Positive(message = "A ordem deve ser um número positivo")
+    @Column(name = "checkpoint_order")
     @Schema(description = "Ordem do checkpoint no roadmap", example = "1")
     private Integer order;
-
 
     @OneToMany(mappedBy = "checkpoint", cascade = CascadeType.ALL, orphanRemoval = true)
     @Schema(description = "Lista de cursos relacionados ao checkpoint")
