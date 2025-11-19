@@ -1,10 +1,15 @@
 package com.gs.requalify.service;
 
-import com.gs.requalify.dto.RoadmapDTO;
-import com.gs.requalify.model.*;
-import com.gs.requalify.repository.*;
-import org.springframework.cache.annotation.CacheEvict;
-import org.springframework.cache.annotation.Cacheable;
+import com.gs.requalify.dto.CheckpointDTO;
+import com.gs.requalify.dto.CourseDTO;
+import com.gs.requalify.model.Checkpoint;
+import com.gs.requalify.model.Course;
+import com.gs.requalify.model.Roadmap;
+import com.gs.requalify.model.User;
+import com.gs.requalify.repository.RoadmapRepository;
+import com.gs.requalify.repository.UserRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -14,77 +19,97 @@ import java.util.stream.Collectors;
 @Service
 public class RoadmapService {
 
+    private static final Logger logger = LoggerFactory.getLogger(RoadmapService.class);
     private final RoadmapRepository roadmapRepository;
     private final UserRepository userRepository;
 
-    public RoadmapService(RoadmapRepository roadmapRepository,
-                          UserRepository userRepository) {
+    public RoadmapService(RoadmapRepository roadmapRepository, UserRepository userRepository) {
         this.roadmapRepository = roadmapRepository;
         this.userRepository = userRepository;
     }
 
     @Transactional
-    @CacheEvict(value = "roadmaps", allEntries = true)
-    public Roadmap createRoadmap(RoadmapDTO roadmapDTO, Long userId) {
+    public Roadmap createRoadmap(RoadmapDTOWithCheckpoints dto, Long userId) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("Usuário não encontrado"));
+                .orElseThrow(() -> new IllegalArgumentException("Usuário não encontrado: " + userId));
 
         Roadmap roadmap = Roadmap.builder()
                 .user(user)
-                .targetOccupation(roadmapDTO.targetOccupation())
-                .description(roadmapDTO.description())
+                .targetOccupation(dto.targetOccupation)
+                .description(dto.description)
                 .build();
 
-        if (roadmapDTO.checkpoints() != null) {
-            List<Checkpoint> checkpoints = roadmapDTO.checkpoints().stream()
-                    .map(checkpointDTO -> {
-                        Checkpoint checkpoint = Checkpoint.builder()
-                                .roadmap(roadmap)
-                                .title(checkpointDTO.title())
-                                .description(checkpointDTO.description())
-                                .order(checkpointDTO.order())
-                                .build();
-
-                        if (checkpointDTO.courses() != null) {
-                            List<Course> courses = checkpointDTO.courses().stream()
-                                    .map(courseDTO -> Course.builder()
-                                            .checkpoint(checkpoint)
-                                            .name(courseDTO.name())
-                                            .platform(courseDTO.platform())
-                                            .url(courseDTO.url())
-                                            .description(courseDTO.description())
-                                            .durationHours(courseDTO.durationHours())
-                                            .build())
-                                    .collect(Collectors.toList());
-                            checkpoint.setCourses(courses);
-                        }
-
-                        return checkpoint;
-                    })
-                    .collect(Collectors.toList());
-            roadmap.setCheckpoints(checkpoints);
+        if (dto.checkpoints != null) {
+            roadmap.setCheckpoints(
+                    dto.checkpoints.stream()
+                            .map(checkpointDTO -> mapCheckpoint(checkpointDTO, roadmap))
+                            .collect(Collectors.toList())
+            );
         }
 
-        return roadmapRepository.save(roadmap);
+        Roadmap saved = roadmapRepository.save(roadmap);
+        logger.info("Roadmap criado com sucesso para usuário ID: {}", userId);
+        return saved;
     }
 
-    @Cacheable(value = "roadmaps", key = "#id")
     public Roadmap getRoadmapById(Long id) {
         return roadmapRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Roadmap não encontrado"));
+                .orElseThrow(() -> new IllegalArgumentException("Roadmap não encontrado: " + id));
     }
 
-    @Cacheable(value = "roadmaps", key = "'user-' + #userId")
     public List<Roadmap> getRoadmapsByUserId(Long userId) {
         return roadmapRepository.findByUserId(userId);
     }
 
     @Transactional
-    @CacheEvict(value = "roadmaps", allEntries = true)
     public void deleteRoadmap(Long id) {
-        if (!roadmapRepository.existsById(id)) {
-            throw new RuntimeException("Roadmap não encontrado");
+        Roadmap roadmap = roadmapRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Roadmap não encontrado: " + id));
+        roadmapRepository.delete(roadmap);
+        logger.info("Roadmap deletado: {}", id);
+    }
+
+
+    private Checkpoint mapCheckpoint(CheckpointDTO dto, Roadmap roadmap) {
+        Checkpoint checkpoint = Checkpoint.builder()
+                .roadmap(roadmap)
+                .title(dto.title())
+                .description(dto.description())
+                .order(dto.order())
+                .build();
+
+        if (dto.courses() != null) {
+            checkpoint.setCourses(
+                    dto.courses().stream()
+                            .map(courseDTO -> mapCourse(courseDTO, checkpoint))
+                            .collect(Collectors.toList())
+            );
         }
-        roadmapRepository.deleteById(id);
+
+        return checkpoint;
+    }
+
+    private Course mapCourse(CourseDTO dto, Checkpoint checkpoint) {
+        return Course.builder()
+                .checkpoint(checkpoint)
+                .name(dto.name())
+                .platform(dto.platform())
+                .url(dto.url())
+                .description(dto.description())
+                .durationHours(dto.durationHours())
+                .build();
+    }
+
+    // DTO interno para representar um roadmap com checkpoints
+    public static class RoadmapDTOWithCheckpoints {
+        public final String targetOccupation;
+        public final String description;
+        public final List<CheckpointDTO> checkpoints;
+
+        public RoadmapDTOWithCheckpoints(String targetOccupation, String description, List<CheckpointDTO> checkpoints) {
+            this.targetOccupation = targetOccupation;
+            this.description = description;
+            this.checkpoints = checkpoints;
+        }
     }
 }

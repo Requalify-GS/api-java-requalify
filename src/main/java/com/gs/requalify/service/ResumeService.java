@@ -8,6 +8,8 @@ import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
+
 @Service
 public class ResumeService {
 
@@ -22,25 +24,45 @@ public class ResumeService {
 
     @Transactional
     @CacheEvict(value = "resumes", allEntries = true)
-    public Resume createResume(ResumeDTO resumeDTO, Long userId) {
+    public Resume createResume(ResumeDTO dto, Long userId) {
+
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("Usuário não encontrado"));
 
-        if (resumeRepository.existsByUserId(userId)) throw new RuntimeException("Usuário já possui um currículo");
+        if (resumeRepository.existsByUserId(userId))
+            throw new RuntimeException("Usuário já possui um currículo");
 
-        Resume resume = Resume.builder()
-                .user(user)
-                .occupation(resumeDTO.occupation())
-                .summary(resumeDTO.summary())
-                .skills(resumeDTO.skills())
-                .educations(resumeDTO.educations())
-                .experiences(resumeDTO.experiences())
-                .certifications(resumeDTO.certifications())
-                .build();
+        Resume resume = new Resume();
+        resume.setUser(user);
+        resume.setOccupation(dto.occupation());
+        resume.setSummary(dto.summary());
+        resume.setSkills(dto.skills());
 
-        if (resume.getEducations() != null) resume.getEducations().forEach(education -> education.setResume(resume));
-        if (resume.getExperiences() != null) resume.getExperiences().forEach(experience -> experience.setResume(resume));
-        if (resume.getCertifications() != null) resume.getCertifications().forEach(certification -> certification.setResume(resume));
+        // criar listas mutáveis
+        resume.setEducations(new ArrayList<>());
+        resume.setExperiences(new ArrayList<>());
+        resume.setCertifications(new ArrayList<>());
+
+        if (dto.educations() != null) {
+            dto.educations().forEach(education -> {
+                education.setResume(resume);
+                resume.getEducations().add(education);
+            });
+        }
+
+        if (dto.experiences() != null) {
+            dto.experiences().forEach(experience -> {
+                experience.setResume(resume);
+                resume.getExperiences().add(experience);
+            });
+        }
+
+        if (dto.certifications() != null) {
+            dto.certifications().forEach(certification -> {
+                certification.setResume(resume);
+                resume.getCertifications().add(certification);
+            });
+        }
 
         return resumeRepository.save(resume);
     }
@@ -59,42 +81,40 @@ public class ResumeService {
 
     @Transactional
     @CacheEvict(value = "resumes", allEntries = true)
-    public Resume updateResume(Long id, ResumeDTO resumeDTO) {
-        Resume resumeExistente = resumeRepository.findById(id)
+    public Resume updateResume(Long id, ResumeDTO dto) {
+
+        Resume resume = resumeRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Currículo não encontrado"));
 
-        resumeExistente.setOccupation(resumeDTO.occupation());
-        resumeExistente.setSummary(resumeDTO.summary());
-        resumeExistente.setSkills(resumeDTO.skills());
+        resume.setOccupation(dto.occupation());
+        resume.setSummary(dto.summary());
+        resume.setSkills(dto.skills());
 
-        if (resumeDTO.educations() != null) {
-            if (resumeExistente.getEducations() != null) resumeExistente.getEducations().clear();
-
-            resumeDTO.educations().forEach(education -> {
-                education.setResume(resumeExistente);
-                resumeExistente.getEducations().add(education);
+        resume.getEducations().clear();
+        if (dto.educations() != null) {
+            dto.educations().forEach(education -> {
+                education.setResume(resume);
+                resume.getEducations().add(education);
             });
         }
 
-        if (resumeDTO.experiences() != null) {
-            if (resumeExistente.getExperiences() != null) resumeExistente.getExperiences().clear();
-
-            resumeDTO.experiences().forEach(experience -> {
-                experience.setResume(resumeExistente);
-                resumeExistente.getExperiences().add(experience);
+        resume.getExperiences().clear();
+        if (dto.experiences() != null) {
+            dto.experiences().forEach(experience -> {
+                experience.setResume(resume);
+                resume.getExperiences().add(experience);
             });
         }
 
-        if (resumeDTO.certifications() != null) {
-            if (resumeExistente.getCertifications() != null) resumeExistente.getCertifications().clear();
-
-            resumeDTO.certifications().forEach(certification -> {
-                certification.setResume(resumeExistente);
-                resumeExistente.getCertifications().add(certification);
+        resume.getCertifications().clear();
+        if (dto.certifications() != null) {
+            dto.certifications().forEach(certification -> {
+                certification.setResume(resume);
+                resume.getCertifications().add(certification);
             });
         }
 
-        return resumeRepository.save(resumeExistente);
+        return resumeRepository.save(resume);
     }
 
     @Transactional
@@ -102,12 +122,6 @@ public class ResumeService {
     public void deleteResume(Long id) {
         Resume resume = resumeRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Currículo não encontrado"));
-
-        User user = resume.getUser();
-        if (user != null) {
-            user.setResume(null);
-            userRepository.save(user);
-        }
 
         resumeRepository.delete(resume);
     }
