@@ -40,9 +40,9 @@
 ## 🔗 Links de Deploy
 
 ### 🌐 Aplicação Backend (API)
-- **URL**: `https://requalify-api.seu-dominio.com`
-- **Swagger UI**: `https://requalify-api.seu-dominio.com/swagger-ui.html`
-- **Health Check**: `https://requalify-api.seu-dominio.com/actuator/health`
+- **URL**: `https://http://requlify.azurewebsites.net/`
+- **Swagger UI**: `https://http://requlify.azurewebsites.net/swagger-ui.html`
+- **Health Check**: `https://http://requlify.azurewebsites.net/actuator/health`
 
 ### 💾 Banco de Dados
 - **Host**: `seu-db-host.postgres.database.azure.com`
